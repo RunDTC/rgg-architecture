@@ -9,13 +9,14 @@ Architecture content lives in typed TypeScript under `src/data/`; the categorica
 | `src/config/taxonomy.ts` | `TIERS`, `SYSTEM_STATUSES`, `FLOW_KINDS`, `DOMAINS`, `MIGRATION_STATUSES`, `NODE_KIND_VISUALS`, and the derived `Tier` / `SystemStatus` / `FlowKind` / `Domain` / `MigrationStatus` types | The categorical vocabulary + colors — single source of truth |
 | `src/config/site.ts` | `site`, `ViewId` | Branding and default view/domain |
 | `src/config/landscape.ts` | `lanes`, `LaneSpec` | Landscape swimlane columns |
-| `types.ts` | model interfaces | `SystemDef`, `DataStoreDef`, `ExternalDef`, `FlowDef`, `MigrationDef` (re-exports the union types from `taxonomy.ts`) |
+| `types.ts` | model interfaces | `SystemDef`, `DataStoreDef`, `ExternalDef`, `FlowDef`, `MigrationDef`, `SequenceDef`, `SequenceMessage` (re-exports the union types from `taxonomy.ts`) |
 | `systems.ts` | `systems: SystemDef[]` | Every first-party system |
 | `datastores.ts` | `datastores: DataStoreDef[]` | Databases/storage with a `contents` list of what lives inside |
 | `externals.ts` | `externals: ExternalDef[]` | Third-party services |
 | `flows.ts` | `flows: FlowDef[]` | Directed edges between any two node ids |
 | `migrations.ts` | `migrations: MigrationDef[]` | Legacy → modern replacement pairs with status |
-| `model.ts` | `allNodes`, `nodeById`, `flowsForNode()`, `flowsForDomain()`, `nodeIdsForFlows()` + re-exports of the data arrays | Derived lookups — no data lives here |
+| `sequences.ts` | `sequences: SequenceDef[]`, `actors` | Ordered order/payment scenarios shown in the Sequence Diagrams view |
+| `model.ts` | `allNodes`, `nodeById`, `flowsForNode()`, `flowsForDomain()`, `nodeIdsForFlows()`, `sequenceById`, `isArchNode()`, `participantLabel()` + re-exports of the data arrays | Derived lookups — no data lives here |
 
 ## The id graph (what must stay consistent)
 
@@ -23,6 +24,7 @@ Node `id`s are the glue. They are referenced from:
 
 - `flows.ts` — every `source` and `target`
 - `migrations.ts` — every entry in `from` and `to`
+- `sequences.ts` — every `participants` entry and every message `from`/`to` (except diagram-only actor ids declared in that file's `actors` map)
 - `src/config/landscape.ts` — only for lanes that use an explicit `{ ids: [...] }` list (tier/kind lanes derive membership automatically)
 
 **There is no runtime validation.** `FlowGraph` silently skips edges whose endpoints aren't in the current view, and `model.ts` lookups just miss. A typo'd id doesn't crash — the edge or node quietly disappears. Double-check ids against the actual arrays when adding flows. If you rename an id, grep `src/data/` and `src/config/`.
@@ -57,6 +59,19 @@ Add one entry to the relevant array in `src/config/taxonomy.ts` (with a `color`;
 ### Add or update a migration
 
 Append/edit a `MigrationDef` in `migrations.ts`. `from`/`to` are arrays of node ids (a migration can fan in/out). `status` is an id from `MIGRATION_STATUSES`; `deadline` is a free-form string shown as a badge.
+
+### Add or edit a sequence diagram
+
+Append/edit a `SequenceDef` in `sequences.ts`. Each scenario renders as a sequence diagram in the Sequence Diagrams view.
+
+1. `participants` is the left-to-right lifeline order. Each id is a node id (from `systems`/`datastores`/`externals`) — clicking that lifeline opens its DetailPanel — **or** a key in the file's `actors` map (a diagram-only lifeline with no fact sheet, e.g. `shopper`).
+2. `messages` is the ordered, top-to-bottom conversation. Each has `from`, `to`, a `kind` from `FLOW_KINDS`, and a short `label`.
+3. `response: true` draws a dashed return arrow and closes the caller's activation bar. A call is paired with the nearest later response that goes back to it; unpaired calls get a short activation stub.
+4. `domain` colors the diagram and groups the scenario selector (the sample groups Orders vs Payments). `note` adds a small annotation under a message (e.g. a branch/decline path).
+5. Same **no runtime validation** caveat as flows: a `from`/`to`/`participant` id that is neither a node nor an actor silently misrenders — check ids against the arrays.
+6. Model integration middleware (the iPaaS) as a **connector, not an initiator**: a change originates from a real system (Shopify, the OMS, …), and the iPaaS only relays it onward. Every iPaaS-outbound message should follow a preceding inbound one, never open a diagram.
+
+Sequences are independent of `flows.ts`; they don't have to mirror the graph edges (the sample's payment-authorized / payment-captured scenarios intentionally split what `flows.ts` models as one "Authorize & capture" call).
 
 ## Content guidelines
 

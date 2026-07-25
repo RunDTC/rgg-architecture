@@ -3,7 +3,8 @@ import { datastores } from "./datastores";
 import { externals } from "./externals";
 import { flows } from "./flows";
 import { migrations } from "./migrations";
-import type { ArchNodeDef, Domain, FlowDef } from "./types";
+import { sequences, actors } from "./sequences";
+import type { ArchNodeDef, Domain, FlowDef, SequenceDef } from "./types";
 
 export const allNodes: ArchNodeDef[] = [...systems, ...datastores, ...externals];
 
@@ -35,4 +36,18 @@ export function nodeIdsForFlows(subset: FlowDef[]): string[] {
   return allNodes.filter((node) => ids.has(node.id)).map((node) => node.id);
 }
 
-export { systems, datastores, externals, flows, migrations };
+export const sequenceById = new Map<string, SequenceDef>(
+  sequences.map((sequence) => [sequence.id, sequence]),
+);
+
+/** True when a participant id is a real architecture node (i.e. has a fact sheet). */
+export function isArchNode(id: string): boolean {
+  return nodeById.has(id);
+}
+
+/** Display name for a sequence participant — a node name, an actor label, or the raw id. */
+export function participantLabel(id: string): string {
+  return nodeById.get(id)?.name ?? actors[id] ?? id;
+}
+
+export { systems, datastores, externals, flows, migrations, sequences, actors };

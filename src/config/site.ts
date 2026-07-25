@@ -1,7 +1,7 @@
 import type { Domain } from "@/config/taxonomy";
 
-/** The four built-in views. Adding a view is a code change (a new component), not config. */
-export type ViewId = "landscape" | "flows" | "stores" | "migrations";
+/** The built-in views. Adding a view is a code change (a new component), not config. */
+export type ViewId = "landscape" | "flows" | "sequences" | "stores" | "migrations";
 
 export interface SiteConfig {
   /** Short brand name, e.g. used in prose. */

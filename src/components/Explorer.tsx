@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LandscapeView } from "@/views/LandscapeView";
 import { DataFlowView } from "@/views/DataFlowView";
+import { SequenceView } from "@/views/SequenceView";
 import { DataStoreView } from "@/views/DataStoreView";
 import { MigrationView } from "@/views/MigrationView";
 import { site, type ViewId } from "@/config/site";
@@ -13,9 +14,13 @@ import { Legend } from "./Legend";
 const views: { id: ViewId; label: string }[] = [
   { id: "landscape", label: "System Landscape" },
   { id: "flows", label: "Data Flows" },
+  { id: "sequences", label: "Sequence Diagrams" },
   { id: "stores", label: "Data Stores" },
   { id: "migrations", label: "Migration Map" },
 ];
+
+/** Views that render the node-graph Legend overlay. */
+const viewsWithLegend: ViewId[] = ["landscape", "flows", "stores"];
 
 export function Explorer() {
   const [view, setView] = useState<ViewId>(site.defaultView);
@@ -57,11 +62,14 @@ export function Explorer() {
           {view === "flows" && (
             <DataFlowView selectedId={selectedId} onSelect={setSelectedId} />
           )}
+          {view === "sequences" && (
+            <SequenceView selectedId={selectedId} onSelect={setSelectedId} />
+          )}
           {view === "stores" && (
             <DataStoreView selectedId={selectedId} onSelect={setSelectedId} />
           )}
           {view === "migrations" && <MigrationView onSelect={setSelectedId} />}
-          {view !== "migrations" && <Legend />}
+          {viewsWithLegend.includes(view) && <Legend />}
         </main>
         {selectedId && (
           <DetailPanel
