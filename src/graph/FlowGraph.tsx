@@ -128,10 +128,13 @@ export function FlowGraph({
         .map((flow) => {
           const inFocus =
             !focusId || flow.source === focusId || flow.target === focusId;
+          // A step belongs to exactly one trace — `stepDomain`, or the first domain tag.
+          // Matching on `domains.includes` instead would leak step numbers into every
+          // other domain a multi-domain flow is tagged with.
           const traced =
             traceDomain !== null &&
             flow.step !== undefined &&
-            flow.domains.includes(traceDomain);
+            (flow.stepDomain ?? flow.domains[0]) === traceDomain;
           const color = traceDomain
             ? domainColors[traceDomain]
             : inFocus && focusId

@@ -59,6 +59,14 @@ export interface FlowDef {
    * parallel may share a number.
    */
   step?: number;
+  /**
+   * Which domain's trace a `step` belongs to. Defaults to `domains[0]`.
+   *
+   * Without this, a stepped flow tagged with several domains would render its number in
+   * every one of them — e.g. a boutique-lifecycle step also tagged `catalog` would show
+   * a stray "3." on the Catalog chip. Set it when a stepped flow is multi-domain.
+   */
+  stepDomain?: Domain;
 }
 
 export interface MigrationDef {

@@ -1,165 +1,697 @@
 import type { SequenceDef } from "./types";
 
-// Curated order/payment choreography, rendered as sequence diagrams (Sequence Diagrams
-// view). Each scenario is an ordered list of messages between participants.
+// ──────────────────────────────────────────────────────────────────────────────
+// Curated choreography for the scenarios that carry the most architectural risk.
 //
 //  - `participants` sets the left-to-right lifeline order. Every id is a real node id
-//    from systems/datastores/externals, EXCEPT diagram-only actors declared in `actors`
-//    below. As with `flows.ts` there is no runtime validation — a typo'd id silently
-//    misrenders, so keep ids in sync with the model.
+//    from systems/datastores/externals, EXCEPT the diagram-only actors declared below.
+//    There is no runtime validation — a typo'd id silently misrenders.
 //  - `response: true` draws a dashed return arrow (and closes the caller's activation).
-//  - `kind` reuses the FlowKind vocabulary, so messages carry the same labels/legend as
-//    the graph views.
-//  - Modeling rule: the iPaaS is a CONNECTOR, never an initiator. Every iPaaS-outbound
-//    message relays a preceding inbound one — changes originate from real systems
-//    (Shopify, OMS, …), not from the iPaaS.
+//  - `note` is where the known gaps live. These diagrams are chosen to show where the
+//    target architecture does NOT yet have an answer, not just where it does.
+//  - Modeling rule: integration services are CONNECTORS, never initiators. Every
+//    outbound message from client-mediation, product-sync, inventory-sync,
+//    order-integration, or stream-processing relays a preceding inbound one.
 //
-// Note: the graph model (`flows.ts`) collapses auth + capture into one checkout call
-// ("Authorize & capture"). The payment-authorized / payment-captured scenarios below
-// present the auth-then-capture model as their own curated flows and deliberately do NOT
-// change `flows.ts`. This bundled data is an illustrative sample (fictional "Acme
-// Outfitters"); confirm the real capture trigger and refund path when populating a client.
+// Keep participant counts at 8 or fewer — the diagram is 156px for the first lifeline
+// plus 200px for each additional one, so 8 is already ~1,600px wide.
+// ──────────────────────────────────────────────────────────────────────────────
 
 /** Diagram-only participants that are not architecture nodes (no fact sheet). */
 export const actors: Record<string, string> = {
   shopper: "Shopper",
+  merchandiser: "Merchandiser",
+  "csr-agent": "CSR Agent",
+  vendor: "Vendor",
 };
 
 export const sequences: SequenceDef[] = [
-  // ── Order placed ───────────────────────────────────────────────
+  // ── Boutique goes live ─────────────────────────────────────────
   {
-    id: "order-placed",
-    title: "Order placed",
-    domain: "orders",
+    id: "boutique-goes-live",
+    title: "Boutique goes live",
+    domain: "merchandising",
     summary:
-      "A shopper checks out: tax and payment are settled inline, then an order-created " +
-      "webhook kicks off asynchronous order creation and confirmation.",
+      "The flagship target-state workflow: a merchandiser assembles a boutique as a SCAYLE shop category with custom data, gets it approved, and schedules it against a day-part. Carries the two capabilities SCAYLE does not have natively — boutique-level approval states and future-date preview.",
     participants: [
+      "merchandiser",
+      "boutique-studio",
+      "scayle-admin-api",
+      "personalization",
+      "scayle-promotions",
+      "scayle-storefront-api",
       "shopper",
-      "shopify-checkout",
-      "tax-service",
-      "payment-gateway",
-      "ipaas",
-      "oms",
-      "email-marketing",
     ],
-    messages: [
-      { from: "shopper", to: "shopify-checkout", kind: "api-call", label: "Place order" },
-      { from: "shopify-checkout", to: "tax-service", kind: "api-call", label: "Calculate tax" },
-      { from: "tax-service", to: "shopify-checkout", kind: "api-call", label: "Tax amount", response: true },
-      { from: "shopify-checkout", to: "payment-gateway", kind: "api-call", label: "Authorize & capture" },
-      { from: "payment-gateway", to: "shopify-checkout", kind: "api-call", label: "Approved", response: true },
-      { from: "shopify-checkout", to: "shopper", kind: "api-call", label: "Confirmation page", response: true },
-      { from: "shopify-checkout", to: "ipaas", kind: "webhook", label: "Order created" },
-      { from: "ipaas", to: "oms", kind: "api-call", label: "Create order" },
-      { from: "oms", to: "ipaas", kind: "api-call", label: "Order ID", response: true },
-      { from: "ipaas", to: "email-marketing", kind: "api-call", label: "Order confirmation" },
-    ],
-  },
-
-  // ── Order fulfilled ────────────────────────────────────────────
-  {
-    id: "order-fulfilled",
-    title: "Order fulfilled",
-    domain: "orders",
-    summary:
-      "The OMS releases the order for fulfillment through the iPaaS; the 3PL ships, and " +
-      "shipment status flows back through the iPaaS to the storefront and the shopper.",
-    participants: [
-      "oms",
-      "ipaas",
-      "threepl",
-      "shipping-service",
-      "shopify-online-store",
-      "email-marketing",
-    ],
-    messages: [
-      { from: "oms", to: "ipaas", kind: "api-call", label: "Release for fulfillment" },
-      { from: "ipaas", to: "threepl", kind: "api-call", label: "Fulfillment request" },
-      { from: "oms", to: "shipping-service", kind: "api-call", label: "Rates & labels" },
-      { from: "shipping-service", to: "oms", kind: "api-call", label: "Label & tracking #", response: true },
-      { from: "threepl", to: "ipaas", kind: "webhook", label: "Shipment & tracking" },
-      { from: "shipping-service", to: "oms", kind: "webhook", label: "Tracking updates" },
-      { from: "ipaas", to: "shopify-online-store", kind: "api-call", label: "Status & tracking" },
-      { from: "ipaas", to: "email-marketing", kind: "api-call", label: "Shipping notification" },
-    ],
-  },
-
-  // ── Returns & refunds ──────────────────────────────────────────
-  {
-    id: "returns-refunds",
-    title: "Returns & refunds",
-    domain: "orders",
-    summary:
-      "A shopper requests a return; once the 3PL receives and inspects the item, the OMS " +
-      "issues a refund through the payment gateway and notifies the shopper.",
-    participants: [
-      "shopper",
-      "admin-console",
-      "oms",
-      "threepl",
-      "payment-gateway",
-      "email-marketing",
-    ],
-    messages: [
-      { from: "shopper", to: "admin-console", kind: "api-call", label: "Request return" },
-      { from: "admin-console", to: "oms", kind: "api-call", label: "Create RMA" },
-      { from: "oms", to: "threepl", kind: "api-call", label: "Return authorization" },
-      { from: "oms", to: "admin-console", kind: "api-call", label: "RMA confirmed", response: true },
-      { from: "admin-console", to: "shopper", kind: "api-call", label: "Return label", response: true },
-      { from: "threepl", to: "oms", kind: "webhook", label: "Return received & inspected" },
-      { from: "oms", to: "payment-gateway", kind: "api-call", label: "Refund" },
-      { from: "payment-gateway", to: "oms", kind: "api-call", label: "Refund settled", response: true },
-      { from: "oms", to: "email-marketing", kind: "api-call", label: "Refund confirmation" },
-    ],
-  },
-
-  // ── Payment authorized ─────────────────────────────────────────
-  {
-    id: "payment-authorized",
-    title: "Payment authorized",
-    domain: "payments",
-    summary:
-      "At checkout the payment method is validated and a hold is placed on the funds. " +
-      "Nothing is charged yet — capture happens later, when the order ships.",
-    participants: ["shopper", "shopify-checkout", "tax-service", "payment-gateway"],
-    messages: [
-      { from: "shopper", to: "shopify-checkout", kind: "api-call", label: "Submit payment" },
-      { from: "shopify-checkout", to: "tax-service", kind: "api-call", label: "Calculate tax" },
-      { from: "tax-service", to: "shopify-checkout", kind: "api-call", label: "Tax amount", response: true },
-      {
-        from: "shopify-checkout",
-        to: "payment-gateway",
-        kind: "api-call",
-        label: "Authorize",
-        note: "On decline the order is not created and the shopper is asked for another method.",
-      },
-      { from: "payment-gateway", to: "shopify-checkout", kind: "api-call", label: "Authorized (hold placed)", response: true },
-      { from: "shopify-checkout", to: "shopper", kind: "api-call", label: "Payment accepted", response: true },
-    ],
-  },
-
-  // ── Payment captured ───────────────────────────────────────────
-  {
-    id: "payment-captured",
-    title: "Payment captured",
-    domain: "payments",
-    summary:
-      "Shopify captures the previously authorized funds — at checkout or once the order " +
-      "ships, depending on the client's settings — then settlement is confirmed and the " +
-      "financials are posted to the ERP.",
-    participants: ["shopify-online-store", "payment-gateway", "oms", "erp"],
     messages: [
       {
-        from: "shopify-online-store",
-        to: "payment-gateway",
-        kind: "api-call",
-        label: "Capture payment",
-        note: "Initiated by Shopify — at checkout or on fulfillment, per the client's capture settings.",
+        from: "merchandiser",
+        to: "boutique-studio",
+        kind: "handoff",
+        label: "Open boutique draft",
+        note: "Roughly 200 merchandisers work here instead of Store Manager — the change-management surface of the programme",
       },
-      { from: "payment-gateway", to: "shopify-online-store", kind: "api-call", label: "Captured", response: true },
-      { from: "payment-gateway", to: "oms", kind: "webhook", label: "Settlement status" },
-      { from: "oms", to: "erp", kind: "sync", label: "Post financials" },
+      {
+        from: "boutique-studio",
+        to: "scayle-admin-api",
+        kind: "api-call",
+        label: "Create shop category + custom data",
+        planned: true,
+        note: "Headline, door asset, layout treatment, homepage pinning, ranking boost, and segmentation as typed custom data objects",
+      },
+      {
+        from: "scayle-admin-api",
+        to: "boutique-studio",
+        kind: "api-call",
+        label: "Category id",
+        response: true,
+        planned: true,
+      },
+      {
+        from: "boutique-studio",
+        to: "scayle-admin-api",
+        kind: "api-call",
+        label: "Attribute products into boutique",
+        planned: true,
+        note: "Membership becomes catalog data rather than a hand-assigned list — a different mental model for merchandisers, and how a product can sit in several boutiques at once",
+      },
+      {
+        from: "personalization",
+        to: "scayle-admin-api",
+        kind: "write",
+        label: "Push boutique sort keys",
+        planned: true,
+        note: "Ownership unresolved: SCAYLE Smart Sorting, custom sort keys, storefront logic, or RGG's own models",
+      },
+      {
+        from: "merchandiser",
+        to: "boutique-studio",
+        kind: "handoff",
+        label: "Pin first 2–4 doors",
+      },
+      {
+        from: "merchandiser",
+        to: "boutique-studio",
+        kind: "handoff",
+        label: "Submit for approval",
+        note: "GAP: draft/review/approved/live states exist on Products and Prices but NOT on shop categories. Boutique Studio has to hold them in custom data, and the native audit trail only retains 14 days on products",
+      },
+      {
+        from: "boutique-studio",
+        to: "scayle-promotions",
+        kind: "api-call",
+        label: "Set sellable window + price campaign",
+        planned: true,
+        note: "Five day-parts per brand, offset an hour between Rue and Gilt. Enforced at checkout, not just in the UI",
+      },
+      {
+        from: "boutique-studio",
+        to: "scayle-storefront-api",
+        kind: "read",
+        label: "Preview future day-part",
+        planned: true,
+        note: "GAP: no Storefront API parameter returns a future date's catalog, boutique, pricing, and campaign state. This is custom work that has not been proven",
+      },
+      {
+        from: "shopper",
+        to: "scayle-storefront-api",
+        kind: "api-call",
+        label: "Boutique live at day-part",
+        note: "Cache behaviour at drop boundaries is a first-class engineering concern given flash-sale traffic",
+      },
+    ],
+  },
+
+  // ── Product skeleton to live SKU ───────────────────────────────
+  {
+    id: "product-skeleton-to-live-sku",
+    title: "Product skeleton to live SKU",
+    domain: "catalog",
+    summary:
+      "The PLM-to-PIM boundary: Merch App stays the system of record for buying and POs, SCAYLE becomes the system of record for product content. Carries both data blockers that need RGG sign-off before the model can be frozen.",
+    participants: [
+      "vendor",
+      "merch-app",
+      "product-sync",
+      "scayle-pim",
+      "lily-ai",
+      "merchandiser",
+      "scayle-panel",
+      "canto",
+    ],
+    messages: [
+      {
+        from: "vendor",
+        to: "merch-app",
+        kind: "batch",
+        label: "Offer-to-buy sheet",
+        note: "~7,500 vendors. The origin of the 110-step manual process and most downstream data-quality problems",
+      },
+      {
+        from: "merch-app",
+        to: "merch-app",
+        kind: "write",
+        label: "Derive product + PO skeletons",
+        note: "Products and POs are tightly coupled — neither can be created without the other. PO placement and PO states stay in the PLM; SCAYLE has no concept for them",
+      },
+      {
+        from: "merch-app",
+        to: "product-sync",
+        kind: "api-call",
+        label: "Publish skeletons + hierarchies",
+        planned: true,
+      },
+      {
+        from: "product-sync",
+        to: "scayle-pim",
+        kind: "api-call",
+        label: "Create master → product → variant",
+        planned: true,
+        note: "BLOCKERS: the source has no master/style key linking colorways, and color drives the SKU where SCAYLE needs it promoted to product level with the SKU becoming a single default variant",
+      },
+      {
+        from: "scayle-pim",
+        to: "product-sync",
+        kind: "api-call",
+        label: "PIM ids",
+        response: true,
+        planned: true,
+      },
+      {
+        from: "product-sync",
+        to: "merch-app",
+        kind: "api-call",
+        label: "Write back PIM ids",
+        planned: true,
+        note: "So POs and vendor communication reference the same identifiers the storefront uses",
+      },
+      {
+        from: "scayle-pim",
+        to: "product-sync",
+        kind: "webhook",
+        label: "Product created",
+        planned: true,
+      },
+      {
+        from: "product-sync",
+        to: "lily-ai",
+        kind: "api-call",
+        label: "Request enrichment",
+        planned: true,
+      },
+      {
+        from: "lily-ai",
+        to: "product-sync",
+        kind: "api-call",
+        label: "Enriched attributes",
+        response: true,
+        planned: true,
+        note: "Keep-or-replace against SCAYLE's own AI roadmap is a Phase 1 decision",
+      },
+      {
+        from: "merchandiser",
+        to: "scayle-panel",
+        kind: "handoff",
+        label: "Enrich + attach assets",
+      },
+      {
+        from: "scayle-panel",
+        to: "canto",
+        kind: "read",
+        label: "Fetch boutique assets",
+      },
+      {
+        from: "scayle-panel",
+        to: "scayle-pim",
+        kind: "write",
+        label: "Set attributes + workflow dates",
+        planned: true,
+        note: "productinfo_* dates (sample received, photo, imaging, feature, check-off, AI enrichment) must be queryable — SCAYLE is the PIM now and worklists filter on them. Attribute value-lists suit booleans, not date ranges",
+      },
+    ],
+  },
+
+  // ── Checkout and the remorse period ────────────────────────────
+  {
+    id: "checkout-remorse-period",
+    title: "Checkout & the 30-minute remorse period",
+    domain: "payments",
+    summary:
+      "The headline risk. RGG captures immediately and lets customers cancel for 30 minutes; SCAYLE decrements inventory at order placement. Nothing native reconciles the two, and the cancel path runs into a refund process SCAYLE documents as manual.",
+    participants: [
+      "shopper",
+      "client-mediation",
+      "scayle-checkout",
+      "riskified",
+      "braintree",
+      "scayle-oms",
+      "inventory-sync",
+    ],
+    messages: [
+      { from: "shopper", to: "client-mediation", kind: "api-call", label: "Submit order", planned: true },
+      {
+        from: "client-mediation",
+        to: "scayle-checkout",
+        kind: "api-call",
+        label: "Create order",
+        planned: true,
+      },
+      {
+        from: "scayle-checkout",
+        to: "riskified",
+        kind: "api-call",
+        label: "Fraud screen",
+        planned: true,
+        note: "No pre-built SCAYLE connector. Review is ASYNCHRONOUS, so the order has to be held pending a decision — and the record disagrees on whether RGG stays post-order or moves to pre-auth",
+      },
+      {
+        from: "riskified",
+        to: "scayle-checkout",
+        kind: "api-call",
+        label: "Approved / pending review",
+        response: true,
+        planned: true,
+      },
+      {
+        from: "scayle-checkout",
+        to: "braintree",
+        kind: "api-call",
+        label: "Authorize & capture",
+        planned: true,
+        note: "Immediate capture today, with settlement 30 minutes after placement. Pre-orders shipping weeks out need delayed capture and reauthorization, which is unvalidated",
+      },
+      {
+        from: "braintree",
+        to: "scayle-checkout",
+        kind: "api-call",
+        label: "Captured",
+        response: true,
+        planned: true,
+      },
+      { from: "scayle-checkout", to: "scayle-oms", kind: "api-call", label: "Create order", planned: true },
+      {
+        from: "scayle-oms",
+        to: "inventory-sync",
+        kind: "api-call",
+        label: "Decrement on placement",
+        planned: true,
+        note: "RACE CONDITION: SCAYLE decrements at order placement, but the order may still be cancelled inside the 30-minute window. No native equivalent for the remorse period — the reconciliation has to be built",
+      },
+      {
+        from: "shopper",
+        to: "client-mediation",
+        kind: "api-call",
+        label: "Cancel within 30 min",
+        planned: true,
+      },
+      {
+        from: "client-mediation",
+        to: "scayle-oms",
+        kind: "api-call",
+        label: "Cancel order",
+        planned: true,
+      },
+      {
+        from: "scayle-oms",
+        to: "braintree",
+        kind: "api-call",
+        label: "Void / refund",
+        planned: true,
+        note: "GAP: SCAYLE's documented refund process is manual with no native Braintree connectivity — the integration layer has to drive it",
+      },
+      {
+        from: "scayle-oms",
+        to: "inventory-sync",
+        kind: "api-call",
+        label: "Restore availability",
+        planned: true,
+      },
+    ],
+  },
+
+  // ── Inventory sync and the oversell guard ──────────────────────
+  {
+    id: "inventory-sync-oversell-guard",
+    title: "Inventory sync & the oversell guard",
+    domain: "inventory",
+    summary:
+      "Stock from a single DC and 375 dropship vendors is netted against in-flight orders and pushed into SCAYLE. Two facts make this the most fragile flow in the target state: dropship stock is neither owned nor observed in real time, and the record disagrees about the inventory API's semantics.",
+    participants: [
+      "manhattan-wms",
+      "dropship-platform",
+      "kafka",
+      "stream-processing",
+      "inventory-sync",
+      "scayle-oms",
+      "scayle-admin-api",
+    ],
+    messages: [
+      { from: "manhattan-wms", to: "kafka", kind: "event", label: "DC stock movement" },
+      {
+        from: "dropship-platform",
+        to: "kafka",
+        kind: "event",
+        label: "Vendor stock feed",
+        note: "375 active vendors. Highest oversell exposure — the stock is neither owned nor observed in real time",
+      },
+      {
+        from: "kafka",
+        to: "stream-processing",
+        kind: "event",
+        label: "Consume stock topics",
+        planned: true,
+      },
+      {
+        from: "stream-processing",
+        to: "inventory-sync",
+        kind: "event",
+        label: "Netted availability",
+        planned: true,
+      },
+      {
+        from: "scayle-oms",
+        to: "inventory-sync",
+        kind: "api-call",
+        label: "In-flight reservations",
+        planned: true,
+        note: "RGG pushes replacement values adjusted for orders already in flight, not raw deltas",
+      },
+      {
+        from: "inventory-sync",
+        to: "scayle-admin-api",
+        kind: "api-call",
+        label: "Push availability",
+        planned: true,
+        note: "CONFLICTING RECORD: SCAYLE's technical deep-dive describes this API as delta-based ('to set 10, send +10'); the storefront documentation describes it as set-only. Must be resolved in discovery",
+      },
+      {
+        from: "scayle-admin-api",
+        to: "inventory-sync",
+        kind: "api-call",
+        label: "Accepted",
+        response: true,
+        planned: true,
+      },
+      {
+        from: "inventory-sync",
+        to: "kafka",
+        kind: "event",
+        label: "Reconciliation exceptions",
+        planned: true,
+        note: "SCAYLE keeps a local inventory view and is not the system of record, so divergence has to be detected rather than assumed away. Inventory is shared across Rue and Gilt — which is why cutover has to be big-bang",
+      },
+    ],
+  },
+
+  // ── Dropship order release ─────────────────────────────────────
+  {
+    id: "dropship-order-release",
+    title: "Dropship order release",
+    domain: "fulfillment",
+    summary:
+      "Released orders split between the single DC and 375 dropship vendors. The 24-hour consolidation hold is a long-standing business rule that survives the replatform, so the integration layer — not SCAYLE — has to own it.",
+    participants: [
+      "scayle-oms",
+      "order-integration",
+      "dropship-platform",
+      "manhattan-wms",
+      "narvar",
+      "iterable",
+    ],
+    messages: [
+      {
+        from: "scayle-oms",
+        to: "order-integration",
+        kind: "webhook",
+        label: "Order released",
+        planned: true,
+        note: "SCAYLE emits a webhook carrying an order id; the consumer pulls the full order",
+      },
+      {
+        from: "order-integration",
+        to: "order-integration",
+        kind: "write",
+        label: "Hold ~24h for consolidation",
+        planned: true,
+        note: "Dropship orders are batched before release to vendors. Cannot be dropped lightly — it is how RGG controls vendor shipping cost and split shipments",
+      },
+      {
+        from: "order-integration",
+        to: "dropship-platform",
+        kind: "api-call",
+        label: "Release to vendor",
+        planned: true,
+        note: "VendorNet/Radial is retained by formal decision — migrating 375 active vendors would be prohibitive, and VendorNet confirmed it can integrate with any platform",
+      },
+      {
+        from: "order-integration",
+        to: "manhattan-wms",
+        kind: "api-call",
+        label: "Release to DC",
+        planned: true,
+      },
+      {
+        from: "dropship-platform",
+        to: "order-integration",
+        kind: "webhook",
+        label: "Vendor shipment + tracking",
+        planned: true,
+      },
+      {
+        from: "manhattan-wms",
+        to: "order-integration",
+        kind: "webhook",
+        label: "DC shipment confirmed",
+        planned: true,
+      },
+      {
+        from: "order-integration",
+        to: "scayle-oms",
+        kind: "api-call",
+        label: "Fulfillment status",
+        planned: true,
+      },
+      { from: "order-integration", to: "narvar", kind: "api-call", label: "Tracking handoff", planned: true },
+      {
+        from: "order-integration",
+        to: "iterable",
+        kind: "api-call",
+        label: "Shipping notification",
+        planned: true,
+      },
+    ],
+  },
+
+  // ── Return, refund, store credit ───────────────────────────────
+  {
+    id: "return-refund-store-credit",
+    title: "Return, refund & store credit",
+    domain: "payments",
+    summary:
+      "Returns run through a heavily customised Narvar integration with Seel claim-blocking, into a refund path SCAYLE documents as manual, ending in a store-credit concept SCAYLE does not have. Three gaps in one flow.",
+    participants: [
+      "shopper",
+      "narvar",
+      "seel",
+      "order-integration",
+      "scayle-oms",
+      "braintree",
+      "membership-service",
+    ],
+    messages: [
+      { from: "shopper", to: "narvar", kind: "api-call", label: "Start return" },
+      {
+        from: "narvar",
+        to: "seel",
+        kind: "api-call",
+        label: "Check delivery-protection claim",
+        note: "Seel claim-blocking suppresses returns already covered by protection — the most customised part of the Narvar integration, and it just went live during the evaluation",
+      },
+      { from: "seel", to: "narvar", kind: "api-call", label: "Claim status", response: true },
+      { from: "narvar", to: "order-integration", kind: "webhook", label: "RMA created", planned: true },
+      { from: "order-integration", to: "scayle-oms", kind: "api-call", label: "Create return", planned: true },
+      {
+        from: "narvar",
+        to: "order-integration",
+        kind: "webhook",
+        label: "Item received & inspected",
+        planned: true,
+      },
+      { from: "order-integration", to: "scayle-oms", kind: "api-call", label: "Authorize refund", planned: true },
+      {
+        from: "order-integration",
+        to: "braintree",
+        kind: "api-call",
+        label: "Refund to original tender",
+        planned: true,
+        note: "GAP: manual in SCAYLE with no native Braintree connectivity. The integration layer drives it, which makes this a custom build",
+      },
+      {
+        from: "order-integration",
+        to: "membership-service",
+        kind: "api-call",
+        label: "Issue merchandise credit",
+        planned: true,
+        note: "GAP: no store-credit concept in SCAYLE. Merchandise credit never expires and is a balance-sheet liability; promotional credit expires in 7–45 days. Returns are actively steered toward credit with free-return-shipping incentives, so this is a revenue mechanism",
+      },
+      {
+        from: "membership-service",
+        to: "shopper",
+        kind: "api-call",
+        label: "Credit available",
+        response: true,
+        planned: true,
+      },
+    ],
+  },
+
+  // ── Member access gate ─────────────────────────────────────────
+  {
+    id: "member-access-gate",
+    title: "Members-only access gate",
+    domain: "customers",
+    summary:
+      "RGG gates the whole site; SCAYLE gates natively at checkout. Web uses a soft overlay and a 30-day partial-auth cookie, while iOS cannot hard-gate at all under App Store policy — so the gate is 'backend native, frontend custom' across three different client behaviours.",
+    participants: [
+      "shopper",
+      "ios-app",
+      "rue-web",
+      "client-mediation",
+      "scayle-storefront-api",
+      "scayle-checkout",
+    ],
+    messages: [
+      {
+        from: "shopper",
+        to: "ios-app",
+        kind: "handoff",
+        label: "Open app unauthenticated",
+        note: "App Store policy requires unauthenticated browsing, so iOS cannot hard-gate the way web does. Over 50% of GMV flows through this client",
+      },
+      {
+        from: "ios-app",
+        to: "client-mediation",
+        kind: "api-call",
+        label: "Browse boutiques",
+        planned: true,
+      },
+      {
+        from: "client-mediation",
+        to: "scayle-storefront-api",
+        kind: "api-call",
+        label: "Catalog reads",
+        planned: true,
+      },
+      { from: "shopper", to: "rue-web", kind: "handoff", label: "Land on ruelala.com" },
+      {
+        from: "rue-web",
+        to: "rue-web",
+        kind: "write",
+        label: "Show registration gate",
+        planned: true,
+        note: "Today it is a soft JS overlay, not server-side. A 30-day remember-me cookie grants partial authentication for browsing; the gate is also varied by audience for experiments",
+      },
+      { from: "shopper", to: "rue-web", kind: "handoff", label: "Sign in" },
+      {
+        from: "rue-web",
+        to: "client-mediation",
+        kind: "api-call",
+        label: "Authenticate",
+        planned: true,
+        note: "Sign-in scope covers email/password, one-time code, Google, Facebook, and Apple. Migrating social-only accounts with no password is an open question",
+      },
+      {
+        from: "client-mediation",
+        to: "rue-web",
+        kind: "api-call",
+        label: "Session token",
+        response: true,
+        planned: true,
+      },
+      {
+        from: "shopper",
+        to: "scayle-checkout",
+        kind: "api-call",
+        label: "Proceed to checkout",
+        planned: true,
+        note: "SCAYLE gates natively here — 'backend native, frontend custom'. Gating also has a major reporting implication: RGG's member-level data completeness depends on it",
+      },
+    ],
+  },
+
+  // ── Segmentation, personalization, experimentation ─────────────
+  {
+    id: "segment-personalization-experiment",
+    title: "Segments, personalization & experiments",
+    domain: "marketing",
+    summary:
+      "Three overlapping systems decide what a member sees: SCAYLE segments, RGG's boutique-sort models, and Eppo experiment assignment. Eppo references audiences by name and stores nothing, so the mediation layer becomes the place where all three are reconciled.",
+    participants: [
+      "data-platform",
+      "stream-processing",
+      "scayle-admin-api",
+      "personalization",
+      "shopper",
+      "client-mediation",
+      "eppo",
+      "scayle-storefront-api",
+    ],
+    messages: [
+      {
+        from: "data-platform",
+        to: "stream-processing",
+        kind: "batch",
+        label: "Segment membership computed",
+      },
+      {
+        from: "stream-processing",
+        to: "scayle-admin-api",
+        kind: "api-call",
+        label: "Upsert customer segments",
+        planned: true,
+        note: "Replaces today's manual uploads from the warehouse into the transactional database. Tealium is the longer-term real-time source",
+      },
+      {
+        from: "personalization",
+        to: "scayle-admin-api",
+        kind: "write",
+        label: "Push boutique sort keys",
+        planned: true,
+        note: "Ownership unresolved across SCAYLE Smart Sorting, custom sort keys, storefront logic, and RGG's own models. Custom sort keys handle segment-level sorting but not true 1:1",
+      },
+      { from: "shopper", to: "client-mediation", kind: "api-call", label: "Request boutique PLP", planned: true },
+      {
+        from: "client-mediation",
+        to: "eppo",
+        kind: "api-call",
+        label: "Get experiment assignment",
+        planned: true,
+      },
+      {
+        from: "eppo",
+        to: "client-mediation",
+        kind: "api-call",
+        label: "Variant + segment names",
+        response: true,
+        planned: true,
+        note: "Eppo holds segment definitions only, with no persistence layer, and ties A/B audiences to segment NAMES — so name-to-SCAYLE-segment resolution has to happen in the mediation layer",
+      },
+      {
+        from: "client-mediation",
+        to: "scayle-storefront-api",
+        kind: "api-call",
+        label: "Fetch boutique for segment + variant",
+        planned: true,
+      },
+      {
+        from: "scayle-storefront-api",
+        to: "client-mediation",
+        kind: "api-call",
+        label: "Sorted, segmented PLP",
+        response: true,
+        planned: true,
+        note: "A default sort always exists as a fallback if the personalization model or its API is unavailable",
+      },
+      { from: "client-mediation", to: "shopper", kind: "api-call", label: "Render", response: true, planned: true },
     ],
   },
 ];

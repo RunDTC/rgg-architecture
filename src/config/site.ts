@@ -25,12 +25,14 @@ export interface SiteConfig {
  * standing up a new client — see `docs/new-client.md`.
  */
 export const site: SiteConfig = {
-  name: "Acme Outfitters",
-  headerTitle: "Acme Outfitters Architecture",
-  headerSubtitle: "Systems, data flows, and migrations",
-  metaTitle: "Acme Outfitters Architecture Explorer",
+  name: "Rue Gilt Group",
+  headerTitle: "Rue Gilt Group Architecture",
+  headerSubtitle: "Current state, SCAYLE target state, and the path between",
+  metaTitle: "Rue Gilt Group Architecture Explorer",
   metaDescription:
-    "Interactive map of Acme Outfitters' systems, data flows, data stores, and migrations",
+    "Interactive map of Rue La La and Gilt systems, data flows, data stores, and the SCAYLE migration",
   defaultView: "landscape",
-  defaultDomain: "orders",
+  // The boutique lifecycle carries the numbered trace, not the order lifecycle — it's
+  // what SCAYLE least natively supports and the largest scope item in the migration.
+  defaultDomain: "merchandising",
 };

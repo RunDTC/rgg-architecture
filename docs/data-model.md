@@ -25,7 +25,7 @@ Node `id`s are the glue. They are referenced from:
 - `flows.ts` — every `source` and `target`
 - `migrations.ts` — every entry in `from` and `to`
 - `sequences.ts` — every `participants` entry and every message `from`/`to` (except diagram-only actor ids declared in that file's `actors` map)
-- `src/config/landscape.ts` — only for lanes that use an explicit `{ ids: [...] }` list (tier/kind lanes derive membership automatically)
+- `src/config/landscape.ts` — only for lanes that use an explicit `{ ids: [...] }` list (tier/kind lanes derive membership automatically). A `{ kind }` lane resolves to every node of that kind *not* claimed by an explicit `{ ids }` lane, so it also acts as a catch-all — keep those lanes last.
 
 **There is no runtime validation.** `FlowGraph` silently skips edges whose endpoints aren't in the current view, and `model.ts` lookups just miss. A typo'd id doesn't crash — the edge or node quietly disappears. Double-check ids against the actual arrays when adding flows. If you rename an id, grep `src/data/` and `src/config/`.
 
@@ -45,12 +45,13 @@ Same as a system, but in `datastores.ts` / `externals.ts`. They land in the "Dat
 ### Add a flow
 
 1. Append a `FlowDef` to `flows.ts`. `id` convention: `"<source>-to-<target>"` or `"<source>-<topic>"`, kebab-case.
-2. `kind` is one of the ids in `FLOW_KINDS` (`api-call`, `read`, `write`, `read-write`, `sync`, `webhook`, `cron`, `queue`, `handoff`, `export`).
+2. `kind` is one of the ids in `FLOW_KINDS` (`api-call`, `read`, `write`, `read-write`, `sync`, `webhook`, `event`, `batch`, `export`, `handoff`).
 3. Tag every `Domain` it belongs to — domain tags drive the Data Flows view filter.
 4. Keep `label` short (it renders on the edge); use `description` for detail (shows in the DetailPanel).
 5. Optional flags:
-   - `step: n` — includes the edge in the animated, numbered trace shown when its domain is selected (the sample uses this for the Orders lifecycle). Steps that happen in parallel may share a number.
-   - `planned: true` — renders dashed, for flows that don't exist yet.
+   - `step: n` — includes the edge in the animated, numbered trace shown when its domain is selected (RGG uses this for the Merchandising boutique lifecycle). Steps that happen in parallel may share a number.
+   - `stepDomain` — pins a `step` to one domain's trace. Set it on any stepped flow tagged with more than one domain, or the number leaks into the other domains' views. Defaults to `domains[0]`.
+   - `planned: true` — renders dashed, for flows that don't exist yet. In the RGG model this is set on every target-state edge, so the Landscape reads as solid-current / dashed-target.
 
 ### Add a tier, domain, status, or flow kind
 
@@ -69,13 +70,13 @@ Append/edit a `SequenceDef` in `sequences.ts`. Each scenario renders as a sequen
 3. `response: true` draws a dashed return arrow and closes the caller's activation bar. A call is paired with the nearest later response that goes back to it; unpaired calls get a short activation stub.
 4. `domain` colors the diagram and groups the scenario selector (the sample groups Orders vs Payments). `note` adds a small annotation under a message (e.g. a branch/decline path).
 5. Same **no runtime validation** caveat as flows: a `from`/`to`/`participant` id that is neither a node nor an actor silently misrenders — check ids against the arrays.
-6. Model integration middleware (the iPaaS) as a **connector, not an initiator**: a change originates from a real system (Shopify, the OMS, …), and the iPaaS only relays it onward. Every iPaaS-outbound message should follow a preceding inbound one, never open a diagram.
+6. Model integration services as **connectors, not initiators**: a change originates from a real system (SCAYLE, the WMS, Merch App, …), and the connector only relays it onward. Every message out of `client-mediation`, `product-sync`, `inventory-sync`, `order-integration`, or `stream-processing` should follow a preceding inbound one, never open a diagram.
 
-Sequences are independent of `flows.ts`; they don't have to mirror the graph edges (the sample's payment-authorized / payment-captured scenarios intentionally split what `flows.ts` models as one "Authorize & capture" call).
+Sequences are independent of `flows.ts`; they don't have to mirror the graph edges.
 
 ## Content guidelines
 
-- The bundled data is an illustrative sample. For a real client, base facts on the client's real systems (repos, docs, interviews) or ask — don't invent stacks, endpoints, or flow directions.
+- Base facts on RGG's real systems (meeting notes, the RunDTC/SCAYLE approach docs, the POC scope, requirements transcripts) or ask — don't invent stacks, endpoints, or flow directions. Where sources conflict or are silent, record both readings in a `description`/`note` instead of picking one.
 - `description`: one or two sentences — what the system is and its role today.
 - `notes`: the non-obvious operational facts (gotchas, cutover state, where docs/credentials live).
 - `repoPath` (optional): local path to the system's source, if you keep the client's repos as siblings.
