@@ -38,14 +38,20 @@ export type Tier = (typeof TIERS)[number]["id"];
  * `at-risk` is for capabilities with no agreed target owner — calling them "production"
  * or "planned" would both be untrue. Today that's the loyalty engine, the store credit
  * ledger, the affiliate engine, and personalization/boutique sort.
+ *
+ * Every color here clears WCAG AA (4.5:1) as small text on all seven node backgrounds
+ * and on the panel surfaces — status is rendered as a *text label*, not just a dot, so
+ * the 3:1 non-text threshold isn't the one that applies. `planned` and `deprecated` are
+ * deliberately far apart in lightness rather than both mid-slate: they're the two neutral
+ * statuses, so lightness is the only channel left to tell them apart.
  */
 export const SYSTEM_STATUSES = [
   { id: "production", label: "Unchanged", color: "#34d399" },
   { id: "migrating-in", label: "Retained · re-pointed", color: "#38bdf8" },
   { id: "migrating-out", label: "Retiring at cutover", color: "#f59e0b" },
-  { id: "planned", label: "Target state", color: "#94a3b8" },
-  { id: "at-risk", label: "Unresolved · open risk", color: "#f43f5e" },
-  { id: "deprecated", label: "Decommissioned", color: "#64748b" },
+  { id: "planned", label: "Target state", color: "#bac6d6" },
+  { id: "at-risk", label: "Unresolved · open risk", color: "#ff8496" },
+  { id: "deprecated", label: "Decommissioned", color: "#8896ab" },
 ] as const;
 export type SystemStatus = (typeof SYSTEM_STATUSES)[number]["id"];
 
@@ -77,6 +83,10 @@ export type FlowKind = (typeof FLOW_KINDS)[number]["id"];
  * boutiques, ~50 tiles/day, five day-parts per brand — is the thing SCAYLE least
  * natively supports and the largest scope item in the migration. There is deliberately
  * no `content` domain: RGG is not buying a CMS, and a chip would imply one exists.
+ *
+ * Each color doubles as its own chip's text color over a 10–15% wash of itself, so every
+ * entry has to clear WCAG AA (4.5:1) against that tint — `marketing` is the one that had
+ * to move (pink-500 landed at 4.46:1).
  */
 export const DOMAINS = [
   { id: "catalog", label: "Catalog & PIM", color: "#f59e0b" },
@@ -87,16 +97,21 @@ export const DOMAINS = [
   { id: "fulfillment", label: "Fulfillment", color: "#fb923c" },
   { id: "customers", label: "Customers", color: "#a78bfa" },
   { id: "loyalty", label: "Loyalty & Credit", color: "#f472b6" },
-  { id: "marketing", label: "Marketing", color: "#ec4899" },
+  { id: "marketing", label: "Marketing", color: "#f75fa8" },
   { id: "search", label: "Search", color: "#22d3ee" },
   { id: "reporting", label: "Data & Reporting", color: "#fb7185" },
 ] as const;
 export type Domain = (typeof DOMAINS)[number]["id"];
 
-/** Progress of a legacy → target migration. */
+/**
+ * Progress of a legacy → target migration.
+ *
+ * `unresolved` and `planned` intentionally match `at-risk` and `planned` in
+ * `SYSTEM_STATUSES` — the same idea in two vocabularies should not be two shades.
+ */
 export const MIGRATION_STATUSES = [
-  { id: "unresolved", label: "No agreed target", color: "#f43f5e" },
-  { id: "planned", label: "Planned", color: "#94a3b8" },
+  { id: "unresolved", label: "No agreed target", color: "#ff8496" },
+  { id: "planned", label: "Planned", color: "#bac6d6" },
   { id: "in-progress", label: "In progress", color: "#38bdf8" },
   { id: "near-complete", label: "Cutover ready", color: "#34d399" },
   { id: "complete", label: "Complete", color: "#10b981" },

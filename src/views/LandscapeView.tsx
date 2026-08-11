@@ -1,7 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
-import { datastores, externals, flows, systems } from "@/data/model";
+import {
+  datastores,
+  externals,
+  flowPhase,
+  flows,
+  matchesPhase,
+  nodeById,
+  nodePhase,
+  systems,
+  type Phase,
+} from "@/data/model";
 import { lanes, type LaneSpec } from "@/config/landscape";
 import { FlowGraph, type LaneLabel } from "@/graph/FlowGraph";
 import { NODE_HEIGHT, NODE_WIDTH, type Point } from "@/graph/layout";
@@ -33,18 +43,28 @@ const HEADER_OFFSET = 56;
 interface LandscapeViewProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  phase: Phase;
 }
 
-export function LandscapeView({ selectedId, onSelect }: LandscapeViewProps) {
-  const { positions, laneLabels } = useMemo(() => {
+export function LandscapeView({
+  selectedId,
+  onSelect,
+  phase,
+}: LandscapeViewProps) {
+  const { positions, laneLabels, visibleFlows } = useMemo(() => {
     const positions = new Map<string, Point>();
     const laneLabels: LaneLabel[] = [];
     // Empty lanes are skipped entirely rather than drawn as a labelled blank column —
     // the `{ kind }` catch-alls are usually empty, and a headed but empty column reads
     // as missing data. `columnIndex` therefore tracks laid-out lanes, not lane index.
+    // Filtering by phase reuses this: a lane emptied by the filter collapses too, so
+    // the target view drops the Legacy column rather than leaving a gap.
     let columnIndex = 0;
     lanes.forEach((lane) => {
-      const ids = laneIds(lane);
+      const ids = laneIds(lane).filter((id) => {
+        const node = nodeById.get(id);
+        return node ? matchesPhase(nodePhase(node), phase) : false;
+      });
       if (ids.length === 0) return;
       const x = columnIndex * (NODE_WIDTH + COLUMN_GAP);
       columnIndex += 1;
@@ -56,13 +76,19 @@ export function LandscapeView({ selectedId, onSelect }: LandscapeViewProps) {
         });
       });
     });
-    return { positions, laneLabels };
-  }, []);
+    // FlowGraph already drops edges whose endpoints aren't positioned; this additionally
+    // removes edges whose endpoints both survive but which belong to the other phase.
+    const visibleFlows = flows.filter((flow) =>
+      matchesPhase(flowPhase(flow), phase),
+    );
+    return { positions, laneLabels, visibleFlows };
+  }, [phase]);
 
   return (
     <FlowGraph
+      key={phase}
       positions={positions}
-      flows={flows}
+      flows={visibleFlows}
       selectedId={selectedId}
       onSelect={onSelect}
       showLabels={false}

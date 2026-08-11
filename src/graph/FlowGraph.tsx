@@ -19,7 +19,7 @@ import type { Point } from "./layout";
 
 function LaneLabelNode({ data }: { data: { text: string } }) {
   return (
-    <div className="pointer-events-none select-none text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+    <div className="pointer-events-none select-none text-[13px] font-semibold uppercase tracking-[0.2em] text-slate-300">
       {data.text}
     </div>
   );
@@ -43,11 +43,17 @@ interface FlowGraphProps {
   showLabels?: boolean;
   /** Color edges by this domain and animate/number the traced journey steps. */
   traceDomain?: Domain | null;
+  /**
+   * Whether to number/animate `step` edges. Turned off when a phase filter would show
+   * only part of a trace — a lone "1." and "4." with the rest filtered out reads as a
+   * bug rather than as a partial view. Domain coloring is unaffected.
+   */
+  showSteps?: boolean;
   /** Static swimlane headers rendered inside the canvas. */
   laneLabels?: LaneLabel[];
 }
 
-const NEUTRAL_EDGE = "#3f4b5e";
+const NEUTRAL_EDGE = "#5a6b85";
 
 export function FlowGraph({
   positions,
@@ -56,6 +62,7 @@ export function FlowGraph({
   onSelect,
   showLabels = true,
   traceDomain = null,
+  showSteps = true,
   laneLabels = [],
 }: FlowGraphProps) {
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -132,6 +139,7 @@ export function FlowGraph({
           // Matching on `domains.includes` instead would leak step numbers into every
           // other domain a multi-domain flow is tagged with.
           const traced =
+            showSteps &&
             traceDomain !== null &&
             flow.step !== undefined &&
             (flow.stepDomain ?? flow.domains[0]) === traceDomain;
@@ -158,16 +166,16 @@ export function FlowGraph({
               opacity: inFocus ? 1 : 0.1,
             },
             labelStyle: {
-              fill: inFocus ? "#cbd5e1" : "#475569",
-              fontSize: 10,
+              fill: inFocus ? "#e2e8f0" : "#475569",
+              fontSize: 12,
             },
-            labelBgStyle: { fill: "#0b1220", fillOpacity: 0.85 },
-            labelBgPadding: [4, 2] as [number, number],
+            labelBgStyle: { fill: "#0b1220", fillOpacity: 0.92 },
+            labelBgPadding: [5, 3] as [number, number],
             labelBgBorderRadius: 4,
             markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
           };
         }),
-    [flows, positions, focusId, showLabels, traceDomain],
+    [flows, positions, focusId, showLabels, traceDomain, showSteps],
   );
 
   const handleNodeClick: NodeMouseHandler = useCallback(

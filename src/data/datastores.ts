@@ -4,6 +4,11 @@ import type { DataStoreDef } from "./types";
 // Stores view — list the notable collections, topics, or buckets, and use it to surface
 // facts that belong on a fact sheet (e.g. that customer segments currently live in the
 // monolith's transactional database).
+//
+// `phase` is only set on stores that exist on one side of the cutover. Omitted means
+// "both", which covers Confluent, the data platform, S3, and the Merch App database —
+// all retained. It can't be derived from flows: every flow modelled against Confluent is
+// `planned`, but Confluent itself is already in production as RGG's Data Mesh.
 
 export const datastores: DataStoreDef[] = [
   {
@@ -44,6 +49,7 @@ export const datastores: DataStoreDef[] = [
     description:
       "Server-side sessions for the current storefront. Authentication is per-device with no cross-device persistence; a 30-day remember-me cookie grants partial authentication.",
     contents: ["Web sessions", "Remember-me tokens", "Partial-auth state"],
+    phase: "current",
   },
   {
     kind: "datastore",
@@ -71,6 +77,7 @@ export const datastores: DataStoreDef[] = [
       "Loyalty tiers and store credit ledger",
       "OMS stored procedures and adapter layers",
     ],
+    phase: "current",
   },
   {
     kind: "datastore",
@@ -85,6 +92,7 @@ export const datastores: DataStoreDef[] = [
       "PLP sort order and pinning",
       "Site content and affiliate codes",
     ],
+    phase: "current",
   },
   {
     kind: "datastore",
@@ -115,6 +123,7 @@ export const datastores: DataStoreDef[] = [
       "Custom data objects — boutique headline, assets, ranking boost, segmentation",
       "Price campaigns and product sets",
     ],
+    phase: "target",
   },
   {
     kind: "datastore",
@@ -129,5 +138,6 @@ export const datastores: DataStoreDef[] = [
       "Customers and customer segments",
       "Payment and settlement references",
     ],
+    phase: "target",
   },
 ];

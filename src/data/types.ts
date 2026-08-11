@@ -11,6 +11,20 @@ import type {
 // `@/data/types` imports keep resolving. Edit the vocabulary in taxonomy.ts, not here.
 export type { Domain, FlowKind, MigrationStatus, SystemStatus, Tier };
 
+/**
+ * Which side of the cutover something belongs to, for the global Current/Target filter.
+ *
+ * `both` means "exists before and after" — retained systems, third parties, and the
+ * flows between them. It is the default for anything not explicitly one-sided.
+ *
+ * A system's phase is DERIVED from its `status` (see `nodePhase()` in `model.ts`), so
+ * there is nothing to set on `SystemDef`. Data stores and externals have no status, and
+ * their phase cannot be derived from their flows either — Confluent/Kafka runs today
+ * even though every flow modelled against it is `planned` — so those two kinds carry an
+ * explicit optional `phase`.
+ */
+export type Phase = "current" | "target" | "both";
+
 export interface SystemDef {
   kind: "system";
   id: string;
@@ -32,6 +46,8 @@ export interface DataStoreDef {
   technology: string;
   description: string;
   contents: string[];
+  /** Omit for stores that exist on both sides of the cutover. */
+  phase?: Phase;
 }
 
 export interface ExternalDef {
@@ -40,6 +56,8 @@ export interface ExternalDef {
   name: string;
   category: string;
   description: string;
+  /** Omit for third parties retained through the cutover (the usual case). */
+  phase?: Phase;
 }
 
 export type ArchNodeDef = SystemDef | DataStoreDef | ExternalDef;
