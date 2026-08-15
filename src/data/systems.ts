@@ -534,4 +534,16 @@ export const systems: SystemDef[] = [
       "Custom sort keys handle segment-level sorting more readily than true 1:1 personalization, which is what the current model does",
     ],
   },
+  {
+    kind: "system",
+    id: "zzz-phase2-test-delete-me",
+    name: "ZZZ Phase 2 Test (delete me)",
+    tier: "custom",
+    status: "planned",
+    description: "Temporary entry created to verify the chat-to-GitHub save pipeline. Safe to delete.",
+    stack: [
+      "n/a",
+    ],
+    runtime: "n/a",
+  }
 ];
