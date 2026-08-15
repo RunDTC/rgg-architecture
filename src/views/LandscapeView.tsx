@@ -1,17 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  datastores,
-  externals,
-  flowPhase,
-  flows,
-  matchesPhase,
-  nodeById,
-  nodePhase,
-  systems,
-  type Phase,
-} from "@/data/model";
+import { matchesPhase, type Phase } from "@/data/model";
+import type { DataStoreDef, ExternalDef, SystemDef } from "@/data/types";
+import { useModel } from "@/lib/model/ModelContext";
 import { lanes, type LaneSpec } from "@/config/landscape";
 import { FlowGraph, type LaneLabel } from "@/graph/FlowGraph";
 import { NODE_HEIGHT, NODE_WIDTH, type Point } from "@/graph/layout";
@@ -27,7 +19,12 @@ const claimedIds = new Set(lanes.flatMap((lane) => ("ids" in lane ? lane.ids : [
  * legibility and a node added later still lands somewhere instead of silently
  * disappearing from this view.
  */
-function laneIds(lane: LaneSpec): string[] {
+function laneIds(
+  lane: LaneSpec,
+  systems: SystemDef[],
+  datastores: DataStoreDef[],
+  externals: ExternalDef[],
+): string[] {
   if ("ids" in lane) return lane.ids;
   if ("tier" in lane) {
     return systems.filter((system) => system.tier === lane.tier).map((s) => s.id);
@@ -51,6 +48,9 @@ export function LandscapeView({
   onSelect,
   phase,
 }: LandscapeViewProps) {
+  const { systems, datastores, externals, flows, nodeById, nodePhase, flowPhase } =
+    useModel();
+
   const { positions, laneLabels, visibleFlows } = useMemo(() => {
     const positions = new Map<string, Point>();
     const laneLabels: LaneLabel[] = [];
@@ -61,7 +61,7 @@ export function LandscapeView({
     // the target view drops the Legacy column rather than leaving a gap.
     let columnIndex = 0;
     lanes.forEach((lane) => {
-      const ids = laneIds(lane).filter((id) => {
+      const ids = laneIds(lane, systems, datastores, externals).filter((id) => {
         const node = nodeById.get(id);
         return node ? matchesPhase(nodePhase(node), phase) : false;
       });
@@ -82,7 +82,7 @@ export function LandscapeView({
       matchesPhase(flowPhase(flow), phase),
     );
     return { positions, laneLabels, visibleFlows };
-  }, [phase]);
+  }, [phase, systems, datastores, externals, flows, nodeById, nodePhase, flowPhase]);
 
   return (
     <FlowGraph

@@ -12,7 +12,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Domain, FlowDef } from "@/data/types";
-import { nodeById } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import { domainColors } from "@/lib/theme";
 import { ArchNode, type ArchFlowNode } from "./ArchNode";
 import type { Point } from "./layout";
@@ -65,6 +65,7 @@ export function FlowGraph({
   showSteps = true,
   laneLabels = [],
 }: FlowGraphProps) {
+  const { nodeById } = useModel();
   const [hoverId, setHoverId] = useState<string | null>(null);
 
   const focusId = hoverId ?? selectedId;
@@ -104,7 +105,7 @@ export function FlowGraph({
       });
     }
     return result;
-  }, [positions, laneLabels]);
+  }, [positions, laneLabels, nodeById]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
 

@@ -39,7 +39,6 @@ npx tsc --noEmit     # type-check only
 | `src/graph/` | Shared React Flow engine: `FlowGraph.tsx` (nodes/edges/hover/trace), `ArchNode.tsx`, `layout.ts` (dagre) |
 | `src/components/` | `Explorer.tsx` (view shell), `DetailPanel`, `SearchBar`, `Legend` |
 | `src/lib/theme.ts` | Colors + labels for tiers/statuses/domains/flow kinds — **all derived from `src/config/taxonomy.ts`** |
-| `src/proxy.ts` | Cloudflare Access JWT verification (skipped when env vars unset) |
 | `docs/` | `data-model.md` (editing the model), `app-architecture.md` (how the app is built), `new-client.md` (cloning for a new client) |
 
 ## Editing the architecture model — most common task
@@ -62,4 +61,4 @@ Follow `docs/data-model.md` (or the `update-architecture-model` skill). The shor
 
 ## Deployment
 
-Vercel, behind Cloudflare Access. `src/proxy.ts` rejects requests lacking a valid `Cf-Access-Jwt-Assertion` JWT when `CF_ACCESS_TEAM_DOMAIN` + `CF_ACCESS_AUD` are set; unset (local dev) it fails open. Details in `README.md`.
+Vercel, protected by Vercel Authentication (Standard Protection) at the project level — no app code involved. Details in `README.md`.

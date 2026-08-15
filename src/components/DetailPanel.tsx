@@ -1,7 +1,7 @@
 "use client";
 
-import { flowsForNode, nodeById } from "@/data/model";
 import type { ArchNodeDef, FlowDef } from "@/data/types";
+import { useModel } from "@/lib/model/ModelContext";
 import {
   domainColors,
   domainLabels,
@@ -37,6 +37,7 @@ function FlowRow({
   direction: "in" | "out";
   onSelect: (id: string) => void;
 }) {
+  const { nodeById } = useModel();
   const counterpartId = direction === "out" ? flow.target : flow.source;
   const counterpart = nodeById.get(counterpartId);
   return (
@@ -153,6 +154,7 @@ function SystemFacts({ def }: { def: ArchNodeDef }) {
 }
 
 export function DetailPanel({ nodeId, onSelect, onClose }: DetailPanelProps) {
+  const { nodeById, flowsForNode } = useModel();
   const def = nodeById.get(nodeId);
   if (!def) return null;
   const visual = nodeVisual(def);

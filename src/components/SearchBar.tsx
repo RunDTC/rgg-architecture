@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { allNodes, matchesPhase, nodePhase, type Phase } from "@/data/model";
+import { matchesPhase, type Phase } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import { nodeVisual } from "@/lib/theme";
 
 interface SearchBarProps {
@@ -11,6 +12,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ onSelect, phase = "both" }: SearchBarProps) {
+  const { allNodes, nodePhase } = useModel();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +28,7 @@ export function SearchBar({ onSelect, phase = "both" }: SearchBarProps) {
             node.id.toLowerCase().includes(term)),
       )
       .slice(0, 8);
-  }, [query, phase]);
+  }, [query, phase, allNodes, nodePhase]);
 
   function pick(id: string) {
     onSelect(id);

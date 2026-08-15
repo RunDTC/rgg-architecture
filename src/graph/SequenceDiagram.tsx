@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import type { SequenceDef } from "@/data/types";
-import { isArchNode, nodeById, participantLabel } from "@/data/model";
+import type { ArchNodeDef, SequenceDef } from "@/data/types";
+import { useModel } from "@/lib/model/ModelContext";
 import { domainColors, flowKindLabels, nodeVisual } from "@/lib/theme";
 
 interface SequenceDiagramProps {
@@ -48,7 +48,7 @@ function noteHeight(note: string | undefined): number {
 /** Neutral look for diagram-only actors (not architecture nodes). */
 const ACTOR_VISUAL = { accent: "#94a3b8", bg: "#1e242d", categoryLabel: "Actor" };
 
-function visualFor(id: string) {
+function visualFor(id: string, nodeById: Map<string, ArchNodeDef>) {
   const def = nodeById.get(id);
   return def ? nodeVisual(def) : ACTOR_VISUAL;
 }
@@ -58,6 +58,7 @@ export function SequenceDiagram({
   selectedId,
   onSelect,
 }: SequenceDiagramProps) {
+  const { isArchNode, nodeById, participantLabel } = useModel();
   const color = domainColors[sequence.domain];
 
   const layout = useMemo(() => {
@@ -208,7 +209,7 @@ export function SequenceDiagram({
 
       {/* Participant headers */}
       {participants.map((id, i) => {
-        const visual = visualFor(id);
+        const visual = visualFor(id, nodeById);
         const clickable = isArchNode(id);
         const selected = selectedId === id;
         // Longhand border props only — mixing the `borderTop` shorthand with `borderColor`

@@ -1,12 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  matchesPhase,
-  sequencePhase,
-  sequences,
-  type Phase,
-} from "@/data/model";
+import { matchesPhase, type Phase } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import { domainColors } from "@/lib/theme";
 import { SequenceDiagram } from "@/graph/SequenceDiagram";
 
@@ -21,12 +17,13 @@ export function SequenceView({
   onSelect,
   phase,
 }: SequenceViewProps) {
+  const { sequences, sequencePhase } = useModel();
   const [sequenceId, setSequenceId] = useState<string>(sequences[0]?.id ?? "");
 
   const visible = useMemo(
     () =>
       sequences.filter((seq) => matchesPhase(sequencePhase(seq), phase)),
-    [phase],
+    [phase, sequences, sequencePhase],
   );
   // Derive rather than sync state, so a filter that hides the current selection falls
   // back cleanly instead of blanking the canvas.

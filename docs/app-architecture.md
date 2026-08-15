@@ -21,7 +21,7 @@ Explorer (view tabs + search + selection state)
 ## Config vs. engine — what makes this a template
 
 - **`src/config/`** is per-client. `taxonomy.ts` defines the vocabulary (tiers, statuses, flow kinds, domains) as arrays of `{ id, label, color }`; the union types in `src/data/types.ts` and every map in `src/lib/theme.ts` are *derived* from it, so adding a domain (etc.) is a one-line edit. `site.ts` holds branding + defaults; `landscape.ts` holds swimlanes.
-- **`src/graph/`, `src/components/`, `src/lib/theme.ts`, `src/proxy.ts`** are the generic engine — they consume config + data and never hard-code a client's ids or vocabulary.
+- **`src/graph/`, `src/components/`, `src/lib/theme.ts`** are the generic engine — they consume config + data and never hard-code a client's ids or vocabulary.
 
 Onboarding a client is therefore: edit `src/config/*` + `src/data/*`, leave the engine alone.
 
@@ -50,9 +50,9 @@ Positioning strategies:
 
 Dark-only. All graph colors originate in `src/config/taxonomy.ts` and are exposed through `src/lib/theme.ts` as inline hex, because React Flow node/edge styles are inline `style` objects, not classes. `nodeVisual()` maps a node to its accent/background: systems by `tier`, datastores and externals by `NODE_KIND_VISUALS`. UI chrome (headers, chips, panels) uses Tailwind slate/sky utilities directly; a few structural hex values remain inline in the engine and views.
 
-## Access protection (`src/proxy.ts`)
+## Access protection
 
-Cloudflare Access sits in front of the production deployment; the proxy verifies the `Cf-Access-Jwt-Assertion` JWT against the team's JWKS (`jose`) so the raw `*.vercel.app` origin can't bypass Access. Enforcement activates only when `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` are both set; otherwise it fails open (local dev) and logs a warning on Vercel production. Static assets and Next internals are excluded via the `matcher`.
+Handled entirely by Vercel's platform-level **Deployment Protection** (Vercel Authentication, Standard Protection) — no app code involved. See the README's Deployment section.
 
 ## Dependencies worth knowing
 
@@ -60,5 +60,4 @@ Cloudflare Access sits in front of the production deployment; the proxy verifies
 | --- | --- |
 | `@xyflow/react` v12 | Graph canvas (pan/zoom, custom nodes/edges) |
 | `@dagrejs/dagre` | Auto-layout for flow-derived views |
-| `jose` | JWKS fetch + JWT verification in the proxy |
 | Tailwind 4 (via `@tailwindcss/postcss`) | Styling; no tailwind.config — theme tokens in `globals.css` |

@@ -2,13 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Domain } from "@/data/types";
-import {
-  flowPhase,
-  flowsForDomain,
-  matchesPhase,
-  nodeIdsForFlows,
-  type Phase,
-} from "@/data/model";
+import { matchesPhase, type Phase } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import { domainColors, domainLabels, domainOrder } from "@/lib/theme";
 import { site } from "@/config/site";
 import { FlowGraph } from "@/graph/FlowGraph";
@@ -25,6 +20,7 @@ export function DataFlowView({
   onSelect,
   phase,
 }: DataFlowViewProps) {
+  const { flowsForDomain, flowPhase, nodeIdsForFlows } = useModel();
   const [domain, setDomain] = useState<Domain>(site.defaultDomain);
 
   const { positions, domainFlows, stepsShown } = useMemo(() => {
@@ -44,7 +40,7 @@ export function DataFlowView({
       domainFlows,
       stepsShown: steppedShown > 0 && steppedShown === steppedTotal,
     };
-  }, [domain, phase]);
+  }, [domain, phase, flowsForDomain, flowPhase, nodeIdsForFlows]);
 
   return (
     <div className="flex h-full flex-col">

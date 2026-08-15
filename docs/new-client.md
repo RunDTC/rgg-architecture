@@ -51,4 +51,4 @@ npm run build
 npm run dev
 ```
 
-Check all four views (Landscape lanes populate, Data Flows chips + Orders trace animate, Data Stores fact card, Migration Map statuses). Then deploy per the [README](../README.md) (Vercel behind Cloudflare Access).
+Check all four views (Landscape lanes populate, Data Flows chips + Orders trace animate, Data Stores fact card, Migration Map statuses). Then deploy per the [README](../README.md) (Vercel, protected by Vercel Authentication).

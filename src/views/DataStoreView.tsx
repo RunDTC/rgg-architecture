@@ -1,15 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  datastores,
-  flowPhase,
-  flows,
-  matchesPhase,
-  nodeById,
-  nodePhase,
-  type Phase,
-} from "@/data/model";
+import { matchesPhase, type Phase } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import { FlowGraph } from "@/graph/FlowGraph";
 import { dagreLayout } from "@/graph/layout";
 import { nodeVisual } from "@/lib/theme";
@@ -25,12 +18,13 @@ export function DataStoreView({
   onSelect,
   phase,
 }: DataStoreViewProps) {
+  const { datastores, flows, nodeById, nodePhase, flowPhase } = useModel();
   const [storeId, setStoreId] = useState<string>(datastores[0]?.id ?? "");
 
   const visibleStores = useMemo(
     () =>
       datastores.filter((store) => matchesPhase(nodePhase(store), phase)),
-    [phase],
+    [phase, datastores, nodePhase],
   );
   // Derive rather than sync state: if the phase filter hides the selected store, fall
   // back to the first visible one instead of rendering an empty canvas.
@@ -61,7 +55,7 @@ export function DataStoreView({
       positions: dagreLayout(visibleIds, storeFlows),
       storeFlows,
     };
-  }, [activeId, phase]);
+  }, [activeId, phase, flows, nodeById, nodePhase, flowPhase]);
 
   if (!store) {
     return (

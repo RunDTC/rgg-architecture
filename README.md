@@ -37,13 +37,9 @@ Add or edit entries and the views update automatically. Node `id`s are reference
 
 Full editing reference: [docs/data-model.md](docs/data-model.md). How the app is built: [docs/app-architecture.md](docs/app-architecture.md). New-client runbook: [docs/new-client.md](docs/new-client.md).
 
-## Deployment (Vercel behind Cloudflare Access)
+## Deployment (Vercel Authentication)
 
 1. Deploy the project to Vercel.
-2. Point a Cloudflare-proxied subdomain (e.g. `architecture.example.com`) at Vercel; use Full (strict) SSL.
-3. In Cloudflare Zero Trust, create an Access application for that hostname with your allow policy (email OTP or SSO).
-4. Set these environment variables on Vercel to activate origin protection:
-   - `CF_ACCESS_TEAM_DOMAIN` — your team domain, e.g. `myteam.cloudflareaccess.com`
-   - `CF_ACCESS_AUD` — the Access application's Audience (AUD) tag
+2. In the project's **Deployment Protection** settings, enable **Vercel Authentication** with "Standard Protection" (protects production and all preview deployments). This gates access to logged-in Vercel team/project members (or anyone explicitly granted access) — no custom domain or third-party proxy required.
 
-[src/proxy.ts](src/proxy.ts) verifies the `Cf-Access-Jwt-Assertion` JWT against the team's public signing keys on every request, so hitting the raw `*.vercel.app` URL without going through Access returns 403. When the env vars are unset (local dev), the check is skipped.
+No app code enforces this — it's a platform-level setting, the same pattern used by this workspace's `scayle-storefront` deployment.

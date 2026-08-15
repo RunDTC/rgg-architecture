@@ -1,6 +1,6 @@
 "use client";
 
-import { migrations, nodeById } from "@/data/model";
+import { useModel } from "@/lib/model/ModelContext";
 import {
   migrationStatusColors,
   migrationStatusLabels,
@@ -18,6 +18,7 @@ function NodeChip({
   id: string;
   onSelect: (id: string) => void;
 }) {
+  const { nodeById } = useModel();
   const def = nodeById.get(id);
   if (!def) return null;
   const accent = nodeVisual(def).accent;
@@ -37,6 +38,7 @@ function NodeChip({
 }
 
 export function MigrationView({ onSelect }: MigrationViewProps) {
+  const { migrations } = useModel();
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <p className="mx-auto mb-6 max-w-3xl text-sm text-slate-300">
