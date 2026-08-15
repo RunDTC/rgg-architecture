@@ -533,17 +533,5 @@ export const systems: SystemDef[] = [
       "Ownership unresolved across four candidates: SCAYLE Smart Sorting, custom sort keys pushed to SCAYLE, storefront-side logic, or RGG's own models",
       "Custom sort keys handle segment-level sorting more readily than true 1:1 personalization, which is what the current model does",
     ],
-  },
-  {
-    kind: "system",
-    id: "zzz-phase2-test-delete-me",
-    name: "ZZZ Phase 2 Test (delete me)",
-    tier: "custom",
-    status: "planned",
-    description: "Temporary entry created to verify the chat-to-GitHub save pipeline. Safe to delete.",
-    stack: [
-      "n/a",
-    ],
-    runtime: "n/a",
   }
 ];
