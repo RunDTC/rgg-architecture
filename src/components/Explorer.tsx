@@ -11,6 +11,7 @@ import type { Phase } from "@/data/model";
 import { ModelProvider } from "@/lib/model/ModelContext";
 import { ArchitectureChat } from "./ArchitectureChat";
 import { DetailPanel } from "./DetailPanel";
+import { HistoryPanel } from "./HistoryPanel";
 import { SearchBar } from "./SearchBar";
 import { Legend } from "./Legend";
 import { PhaseFilter } from "./PhaseFilter";
@@ -21,6 +22,7 @@ const views: { id: ViewId; label: string }[] = [
   { id: "sequences", label: "Sequence Diagrams" },
   { id: "stores", label: "Data Stores" },
   { id: "migrations", label: "Migration Map" },
+  { id: "history", label: "History" },
 ];
 
 /** Views that render the node-graph Legend overlay. */
@@ -117,6 +119,7 @@ export function Explorer() {
               />
             )}
             {view === "migrations" && <MigrationView onSelect={setSelectedId} />}
+            {view === "history" && <HistoryPanel />}
             {viewsWithLegend.includes(view) && <Legend />}
           </main>
           {chatOpen ? (

@@ -6,7 +6,7 @@ import { staticModel } from "@/data/model";
 import { useSetDraftModel } from "@/lib/model/ModelContext";
 import { applyOps, modelFromRaw, rawFromModel } from "@/lib/chat/ops";
 import { deriveAppliedToolCalls } from "@/lib/chat/deriveOps";
-import { ProposedChangesPanel } from "./ProposedChangesPanel";
+import { ProposedChangesPanel, type SaveResult } from "./ProposedChangesPanel";
 
 const DISPLAY_NAME_KEY = "architecture-chat-display-name";
 
@@ -49,6 +49,20 @@ export function ArchitectureChat({ onClose }: ArchitectureChatProps) {
     setDraftModel(null);
   }
 
+  async function handleSave(): Promise<SaveResult> {
+    try {
+      const response = await fetch("/api/chat/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, authorName: displayName }),
+      });
+      const data = await response.json();
+      return data as SaveResult;
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
@@ -87,7 +101,7 @@ export function ArchitectureChat({ onClose }: ArchitectureChatProps) {
             setDisplayName(event.target.value);
             localStorage.setItem(DISPLAY_NAME_KEY, event.target.value);
           }}
-          placeholder="For commit credit once saving is wired up"
+          placeholder="Used as the commit author when you save"
           className="mt-1 w-full rounded-md border border-slate-700 bg-[#111a2b] px-2 py-1 text-[13px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
         />
       </div>
@@ -126,7 +140,7 @@ export function ArchitectureChat({ onClose }: ArchitectureChatProps) {
         )}
       </div>
 
-      <ProposedChangesPanel calls={appliedCalls} onDiscard={handleDiscard} />
+      <ProposedChangesPanel calls={appliedCalls} onDiscard={handleDiscard} onSave={handleSave} />
 
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-800 p-3">
         <input

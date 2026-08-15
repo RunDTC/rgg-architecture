@@ -55,6 +55,12 @@ interface FlowGraphProps {
 
 const NEUTRAL_EDGE = "#5a6b85";
 
+// Stable identity for callers that omit `laneLabels` — an inline `[]` default
+// would be a fresh array every render, and since laneLabels is now a
+// dependency of the node-reconciliation effect below, that would re-run the
+// effect (and its setNodes call) on every render, forever.
+const NO_LANE_LABELS: LaneLabel[] = [];
+
 export function FlowGraph({
   positions,
   flows,
@@ -63,7 +69,7 @@ export function FlowGraph({
   showLabels = true,
   traceDomain = null,
   showSteps = true,
-  laneLabels = [],
+  laneLabels = NO_LANE_LABELS,
 }: FlowGraphProps) {
   const { nodeById } = useModel();
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -79,35 +85,51 @@ export function FlowGraph({
     return ids;
   }, [focusId, flows]);
 
-  // Initial nodes only (useNodesState ignores later values); hover/selection
-  // styling is applied via setNodes below, and views remount FlowGraph (via
-  // key) when positions change.
-  const initialNodes = useMemo(() => {
-    const result: (ArchFlowNode | Node)[] = [];
-    for (const [id, position] of positions) {
-      const def = nodeById.get(id);
-      if (!def) continue;
-      result.push({
-        id,
-        type: "arch",
-        position,
-        data: { def, dimmed: false },
-      } satisfies ArchFlowNode);
-    }
-    for (const label of laneLabels) {
-      result.push({
-        id: `lane-${label.id}`,
-        type: "laneLabel",
-        position: { x: label.x, y: label.y },
-        data: { text: label.text },
-        draggable: false,
-        selectable: false,
-      });
-    }
-    return result;
-  }, [positions, laneLabels, nodeById]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+  // Reconcile the node set whenever the model-derived inputs change (initial
+  // mount, or a chat edit updating `positions`/`nodeById` live). Merging into
+  // the existing nodes — instead of replacing wholesale like the old
+  // initial-only `useNodesState` seed did — keeps each surviving node's
+  // measured dimensions and (if dragged) position, so an edit doesn't cause
+  // the flicker/re-fit a full rebuild would.
+  useEffect(() => {
+    setNodes((current) => {
+      const currentById = new Map(current.map((node) => [node.id, node]));
+      const result: (ArchFlowNode | Node)[] = [];
+      for (const [id, position] of positions) {
+        const def = nodeById.get(id);
+        if (!def) continue;
+        const existing = currentById.get(id);
+        if (existing && existing.type === "arch") {
+          const data = existing.data as ArchFlowNode["data"];
+          result.push({ ...existing, data: { ...data, def } });
+        } else {
+          result.push({
+            id,
+            type: "arch",
+            position,
+            data: { def, dimmed: false },
+          } satisfies ArchFlowNode);
+        }
+      }
+      for (const label of laneLabels) {
+        const id = `lane-${label.id}`;
+        const existing = currentById.get(id);
+        result.push(
+          existing ?? {
+            id,
+            type: "laneLabel",
+            position: { x: label.x, y: label.y },
+            data: { text: label.text },
+            draggable: false,
+            selectable: false,
+          },
+        );
+      }
+      return result;
+    });
+  }, [positions, laneLabels, nodeById, setNodes]);
 
   // Apply hover dimming and selection by mutating node state in place. If we
   // instead rebuilt the node objects each render, React Flow would drop their

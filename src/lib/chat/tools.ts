@@ -131,6 +131,43 @@ export function createTools(state: { raw: RawModel }) {
   }
 
   return {
+    findEntities: tool({
+      description:
+        "Search the current model for systems, data stores, externals, flows, migrations, and sequences by name or id. Call this before any update/remove tool call whenever the user refers to something by name — never ask the user for an internal id.",
+      inputSchema: z.object({
+        query: z.string().describe("Name, id, or partial text to search for"),
+      }),
+      execute: async ({ query }) => {
+        const q = query.trim().toLowerCase();
+        const matches: {
+          entityType: string;
+          id: string;
+          label: string;
+          detail?: string;
+        }[] = [];
+        const push = (
+          entityType: string,
+          id: string,
+          label: string,
+          detail?: string,
+        ) => {
+          if (`${id} ${label} ${detail ?? ""}`.toLowerCase().includes(q)) {
+            matches.push({ entityType, id, label, detail });
+          }
+        };
+        for (const s of state.raw.systems) push("system", s.id, s.name, s.tier);
+        for (const d of state.raw.datastores)
+          push("dataStore", d.id, d.name, d.technology);
+        for (const e of state.raw.externals)
+          push("external", e.id, e.name, e.category);
+        for (const f of state.raw.flows)
+          push("flow", f.id, f.label, `${f.source} → ${f.target}`);
+        for (const m of state.raw.migrations) push("migration", m.id, m.title);
+        for (const sq of state.raw.sequences) push("sequence", sq.id, sq.title);
+        return { matches };
+      },
+    }),
+
     addSystem: tool({
       description: "Add a new first-party system to the architecture model.",
       inputSchema: systemSchema.extend({
