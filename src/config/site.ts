@@ -1,7 +1,14 @@
 import type { Domain } from "@/config/taxonomy";
 
 /** The built-in views. Adding a view is a code change (a new component), not config. */
-export type ViewId = "landscape" | "flows" | "sequences" | "stores" | "migrations" | "history";
+export type ViewId =
+  | "map"
+  | "landscape"
+  | "flows"
+  | "sequences"
+  | "stores"
+  | "migrations"
+  | "history";
 
 export interface SiteConfig {
   /** Short brand name, e.g. used in prose. */
@@ -31,7 +38,7 @@ export const site: SiteConfig = {
   metaTitle: "Rue Gilt Group Architecture Explorer",
   metaDescription:
     "Interactive map of Rue La La and Gilt systems, data flows, data stores, and the SCAYLE migration",
-  defaultView: "landscape",
+  defaultView: "map",
   // The boutique lifecycle carries the numbered trace, not the order lifecycle — it's
   // what SCAYLE least natively supports and the largest scope item in the migration.
   defaultDomain: "merchandising",

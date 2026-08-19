@@ -13,6 +13,13 @@ npm run dev   # http://localhost:3000
 
 ## Views
 
+- **Integration Map** *(landing page)* — the hub-and-spoke system landscape: SCAYLE as the
+  hub, the Confluent/Flink event mesh as a bus band beneath it, and the rest of the estate
+  as clustered satellites. A higher-altitude view than the System Landscape — it collapses
+  65 nodes into eleven boxes, with the cutover on the vertical axis (SCAYLE era above the
+  bus, the monolith below). Hover a box to isolate its connections; click any member chip
+  for that node's fact sheet. Edge thickness reflects how many underlying flows cross that
+  boundary.
 - **System Landscape** — every system, data store, and external service in swimlanes. Lanes derive from each system's tier (plus data stores and externals), configured in `src/config/landscape.ts`. Hover a node to isolate its connections; click for the full fact sheet.
 - **Data Flows** — filter the graph by business domain (Orders, Payments, Catalog, Inventory, Fulfillment, Customers, Marketing, Search, Reporting). The Orders domain traces the order lifecycle with numbered, animated steps.
 - **Data Stores** — pick a store and see every system that reads or writes it, plus what lives inside.
@@ -27,6 +34,7 @@ Two directories hold everything client-specific:
 | `src/config/taxonomy.ts` | Tiers, system statuses, flow kinds, domains, migration statuses — each an array of `{ id, label, color }`. The TypeScript union types and all theme colors/labels derive from these arrays, so adding a domain (etc.) is a one-line edit. |
 | `src/config/site.ts` | Branding: app name, titles, header text, default view and domain. |
 | `src/config/landscape.ts` | Swimlane columns for the Landscape view (by tier, by kind, or an explicit id list). |
+| `src/config/integration-map.ts` | Group membership + positions for the Integration Map. States *only* grouping and position — edges are derived from `flows.ts`, so adding a flow updates the map automatically. `EDGE_LABELS` overrides a derived label where aggregation gets noisy. Every node should sit in exactly one group; `IntegrationMapView` logs a dev-only warning naming anything ungrouped or double-counted. |
 | `src/data/systems.ts` | Each system: tier, status, stack, runtime, notes. |
 | `src/data/datastores.ts` | Databases and storage with their notable contents. |
 | `src/data/externals.ts` | Third-party services. |
